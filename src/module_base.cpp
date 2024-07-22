@@ -6,6 +6,11 @@
 #include "msptypes.h"
 #include "logging.h"
 
+#if defined(HAS_HEADTRACKING)
+#include "devHeadTracker.h"
+#include "crsf_protocol.h"
+#endif
+
 void RebootIntoWifi();
 bool BindingExpired(uint32_t now);
 extern uint8_t backpackVersion[];
@@ -55,6 +60,33 @@ ModuleBase::SendBatteryTelemetry(uint8_t *rawCrsfPacket)
 void
 ModuleBase::Loop(uint32_t now)
 {
+#if defined(HAS_HEADTRACKING)
+    static uint32_t lastSend = 0;
+    if (headTrackingEnabled && now - lastSend > 20)
+    {
+        float fyaw, fpitch, froll;
+        getEuler(&fyaw, &fpitch, &froll);
+
+        // convert from degrees to servo positions
+
+        int pan = map((fyaw + 90)*1000, 0, 180*1000, CRSF_CHANNEL_VALUE_1000, CRSF_CHANNEL_VALUE_2000);
+        int tilt = map((fpitch + 90)*1000, 0, 180*1000, CRSF_CHANNEL_VALUE_1000, CRSF_CHANNEL_VALUE_2000);
+        int roll = map((froll + 90)*1000, 0, 180*1000, CRSF_CHANNEL_VALUE_1000, CRSF_CHANNEL_VALUE_2000);
+
+        mspPacket_t packet;
+        packet.reset();
+        packet.makeCommand();
+        packet.function = MSP_ELRS_BACKPACK_SET_PTR;
+        packet.addByte(pan & 0xFF);
+        packet.addByte(pan >> 8);
+        packet.addByte(tilt & 0xFF);
+        packet.addByte(tilt >> 8);
+        packet.addByte(roll & 0xFF);
+        packet.addByte(roll >> 8);
+        sendMSPViaEspnow(&packet);
+        lastSend = now;
+    }
+#endif
 }
 
 void
@@ -120,7 +152,7 @@ MSPModuleBase::Loop(uint32_t now)
             }
             else if (packet->function == MSP_ELRS_BACKPACK_SET_PTR && headTrackingEnabled)
             {
-                  sendMSPViaEspnow(packet);
+                sendMSPViaEspnow(packet);
             }
             msp.markPacketReceived();
         }

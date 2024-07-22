@@ -198,6 +198,22 @@ VrxBackpackConfig::SetStartWiFiOnBoot(bool startWifi)
     m_modified = true;
 }
 
+#if defined(HAS_HEADTRACKING)
+void
+VrxBackpackConfig::SetCompassCalibration(const int calibrationData[3][2])
+{
+    memcpy(m_config.compassCalibration, calibrationData, sizeof(m_config.compassCalibration));
+    m_modified = true;
+}
+
+void
+VrxBackpackConfig::SetBoardOrientation(const float orientation[3])
+{
+    memcpy(m_config.boardOrientation, orientation, sizeof(m_config.boardOrientation));
+    m_modified = true;
+}
+#endif
+
 #if defined(AAT_BACKPACK)
 
 void
@@ -349,5 +365,4 @@ TimerBackpackConfig::SetBootCount(uint8_t count)
     m_config.bootCount = count;
     m_modified = true;
 }
-
 #endif

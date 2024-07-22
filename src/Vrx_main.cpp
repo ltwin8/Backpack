@@ -23,6 +23,7 @@
 #include "devWIFI.h"
 #include "devButton.h"
 #include "devLED.h"
+#include "devHeadTracker.h"
 
 #ifdef RAPIDFIRE_BACKPACK
   #include "rapidfire.h"
@@ -31,7 +32,7 @@
 #elif defined(STEADYVIEW_BACKPACK)
   #include "steadyview.h"
 #elif defined(FUSION_BACKPACK)
-  #include "fusion.h"
+  #include "tbs_fusion.h"
 #elif defined(HDZERO_BACKPACK)
   #include "hdzero.h"
 #elif defined(SKYZONE_MSP_BACKPACK)
@@ -80,6 +81,9 @@ device_t *ui_devices[] = {
   &Button_device,
 #endif
   &WIFI_device,
+#ifdef HAS_HEADTRACKING
+  &HeadTracker_device
+#endif
 };
 
 #if defined(PLATFORM_ESP32)
@@ -238,7 +242,11 @@ void ProcessMSPPacket(mspPacket_t *packet)
   case MSP_ELRS_BACKPACK_SET_HEAD_TRACKING:
     DBGLN("Processing MSP_ELRS_BACKPACK_SET_HEAD_TRACKING...");
     headTrackingEnabled = packet->readByte();
+    #if defined(HAS_HEADTRACKING)
+    resetCenter();
+    #else
     sendHeadTrackingChangesToVrx = true;
+    #endif
     break;
   case MSP_ELRS_BACKPACK_CRSF_TLM:
     DBGV("Processing MSP_ELRS_BACKPACK_CRSF_TLM type %x\n", packet->payload[1]);
@@ -469,6 +477,7 @@ void setup()
 void loop()
 {
   uint32_t now = millis();
+  //DBGLN("vrx main loop");
 
   devicesUpdate(now);
   vrxModule.Loop(now);
@@ -485,7 +494,7 @@ void loop()
         turnOffLED();
         ESP.restart();
       }
-  #endif 
+  #endif
 
   if (connectionState == wifiUpdate)
   {

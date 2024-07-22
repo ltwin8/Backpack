@@ -20,5 +20,5 @@
 # Use DEBUG_LOG_VERBOSE instead (or both) to see verbose debug logging (spammy stuff)
 #-DDEBUG_LOG_VERBOSE
 -D HAS_HEADTRACKING
--D PIN_SDA=3
--D PIN_SCL=4
+-D PIN_SDA=4
+-D PIN_SCL=5

@@ -41,7 +41,7 @@ static IRAM_ATTR void irq_handler(void) {
 static void initialize()
 {
     
-  //DBGLN("ht init");
+  DBGLN("ht init");
     Wire.begin(PIN_SDA, PIN_SCL);
 
     // Compass init first
@@ -50,7 +50,7 @@ static void initialize()
 
     // Initializing the ICM42607C
     int ret = IMU.begin();
-    if (ret != 0) {
+    if (!IMU.begin()) {
         DBGLN("MPU6050 initialization failed: %d", ret);
         return;
     }
@@ -84,7 +84,8 @@ static void initialize()
 static int start()
 {
     
-  //DBGLN("ht start");
+  DBGLN("ht start");
+
     if (ht_state == STATE_ERROR)
     {
         return DURATION_NEVER;

@@ -9,10 +9,19 @@
 #include "config.h"
 #include "logging.h"
 
-//#include "ICM42670P.h"
-#include "Adafruit_MPU6050.h"
-
+#include "ICM42670P.h"
+#include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+
+sensors_event_t a, g, temp;
+inv_imu_sensor_event_t imu_event;
+
+struct imu_event
+{
+ int accel[3];
+ int gyro[3];
+};
+
 //#include "QMC5883LCompass.h"
 
 #include "Fusion.h"
@@ -79,6 +88,31 @@ static void initialize()
     };
     FusionAhrsSetSettings(&ahrs, &settings);
     ht_state = STATE_RUNNING;
+    DBGLN("running... ");
+    IMU.getEvent(&a, &g, &temp);
+imu_event.accel[0]=a.acceleration.x;
+DBGLN("x axis: %d", imu_event.accel[0]);
+
+/*
+//just for debugging if sensur works
+while(1){
+    
+    IMU.getEvent(&a, &g, &temp);
+    imu_event.accel[0]=a.acceleration.x;
+    imu_event.accel[1]=a.acceleration.y;
+    imu_event.accel[2]=a.acceleration.z;
+
+
+    imu_event.gyro[0]=g.gyro.x;
+    imu_event.gyro[1]=g.gyro.y;
+    imu_event.gyro[2]=g.gyro.z;
+
+
+    DBGLN("x axis g: %d", imu_event.gyro[0]);
+    DBGLN("x axis a: %d", imu_event.accel[0]);
+}*/
+
+
 }
 
 static int start()
@@ -147,25 +181,36 @@ static int timeout()
     //inv_imu_sensor_event_t imu_event;
     //IMU.getDataFromRegisters(&imu_event);
 
-      sensors_event_t imu_event, gyroscope, temp;
-  IMU.getEvent(&imu_event, &gyroscope, &temp);
+IMU.getEvent(&a, &g, &temp);
+imu_event.accel[0]=a.acceleration.x;
+imu_event.accel[1]=a.acceleration.y;
+imu_event.accel[2]=a.acceleration.z;
+
+
+imu_event.gyro[0]=g.gyro.x;
+imu_event.gyro[1]=g.gyro.y;
+imu_event.gyro[2]=g.gyro.z;
 
 
     switch(ht_state)
     {
     case STATE_RUNNING:
         {
+
+DBGLN("x axis: %d", imu_event.accel[0]);
+
             FusionVector a;
-            a.axis.x =  imu_event.acceleration.x * aRes;
-            a.axis.y =  imu_event.acceleration.y * aRes;
-            a.axis.z =  imu_event.acceleration.z * aRes;
+            a.axis.x =  imu_event.accel[0] * aRes;
+            a.axis.y =  imu_event.accel[1] * aRes;
+            a.axis.z =  imu_event.accel[2] * aRes;
             rotate(a.array, orientation);
 
             FusionVector g;
-            g.axis.x =  gyroscope.gyro.x * gRes;
-            g.axis.y =  gyroscope.gyro.y * gRes;
-            g.axis.z =  gyroscope.gyro.z * gRes;
+            g.axis.x =  imu_event.gyro[0] * gRes;
+            g.axis.y =  imu_event.gyro[1] * gRes;
+            g.axis.z =  imu_event.gyro[2] * gRes;
             rotate(g.array, orientation);
+
 
             //compass.read();
 
@@ -190,15 +235,16 @@ static int timeout()
         }
         break;
 
-   /* case STATE_COMPASS_CALIBRATING:
+    case STATE_COMPASS_CALIBRATING:
         {
             if ((millis() - cal_started) < 10000)
             {
-                compass.read();
+                //compass.read();
 
-                int x = compass.getX();
-                int y = compass.getY();
-                int z = compass.getZ();
+                //int x = compass.getX();
+                //int y = compass.getY();
+                //int z = compass.getZ();
+                int x,y,z;
 
                 if(x < calibrationData[0][0]) {
                     calibrationData[0][0] = x;
@@ -223,20 +269,20 @@ static int timeout()
             }
             else
             {
-                compass.setCalibration(
+                /*compass.setCalibration(
                     calibrationData[0][0],
                     calibrationData[0][1],
                     calibrationData[1][0],
                     calibrationData[1][1],
                     calibrationData[2][0],
                     calibrationData[2][1]
-                );
+                );*/
                 config.SetCompassCalibration(calibrationData);
                 ht_state = STATE_RUNNING;
             }
         }
         break;
-        */
+        
 
     case STATE_IMU_CALIBRATING:
         {
@@ -247,18 +293,19 @@ static int timeout()
 
     return DURATION_IMMEDIATELY;
 }
-/*
+
 void startCompassCalibration()
 {
+    /*
     compass.clearCalibration();
   	calibrationData[0][0] = calibrationData[0][1] = compass.getX();
   	calibrationData[1][0] = calibrationData[1][1] = compass.getY();
   	calibrationData[2][0] = calibrationData[2][1] = compass.getZ();
-
+*/
 	cal_started = millis();
     ht_state = STATE_COMPASS_CALIBRATING;
 }
-*/
+
 void startIMUCalibration()
 {
 

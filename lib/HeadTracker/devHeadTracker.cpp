@@ -45,6 +45,7 @@ static uint32_t cal_started;
 
 static IRAM_ATTR void irq_handler(void) {
   irq_received = 1;
+  //DBGLN("int");
 }
 
 static void initialize()
@@ -63,10 +64,22 @@ static void initialize()
         DBGLN("MPU6050 initialization failed: %d", ret);
         return;
     }
-    /* ((ret = IMU.enableDataInterrupt(9, irq_handler))) {
+    /* ((ret = IMU.enableDataInterrupt(16, irq_handler))) {
         DBGLN("Interrupt enable failed: %d");
         return;
     }*/
+   //writeMPU6050Register(0x38, 0x01);
+   IMU.setSampleRateDivisor(80); //8kHz samplerate div80 = 100Hz (97Hz meassured)
+
+IMU.setMotionInterrupt(true);  //Data ready interrupt, change in library to set bit0 instead of bit6
+
+
+    pinMode(13, INPUT_PULLUP);
+    attachInterrupt(13, irq_handler, FALLING);
+    IMU.setInterruptPinLatch(false);	// not latched.
+    IMU.setInterruptPinPolarity(true); //pin goes low when interrupt active
+
+
     // Accel ODR = 100 Hz and Full Scale Range = 16G
     //IMU.startAccel(100, 16);
     IMU.setAccelerometerRange(MPU6050_RANGE_16_G);
@@ -83,8 +96,7 @@ static void initialize()
             .gain = 0.5f,
             .gyroscopeRange = 2000.0f, /* replace this with actual gyroscope range in degrees/s */
             .accelerationRejection = 10.0f,
-            .magneticRejection = 10.0f,
-            .recoveryTriggerPeriod = 5 * 100, /* 5 seconds */
+            .recoveryTriggerPeriod = 5 * 97, /* 5 seconds */
     };
     FusionAhrsSetSettings(&ahrs, &settings);
     ht_state = STATE_RUNNING;
@@ -197,7 +209,7 @@ imu_event.gyro[2]=g.gyro.z;
     case STATE_RUNNING:
         {
 
-DBGLN("x axis: %d", imu_event.accel[0]);
+DBGLN("z axis: %d", imu_event.gyro[2]);
 
             FusionVector a;
             a.axis.x =  imu_event.accel[0] * aRes;
@@ -226,7 +238,7 @@ DBGLN("x axis: %d", imu_event.accel[0]);
             const float deltaTime = (float) (timestamp - previousTimestamp) / (float) 1000000;
             previousTimestamp = timestamp;
 
-            FusionAhrsUpdate(&ahrs, g, a, m, deltaTime);
+            FusionAhrsUpdate(&ahrs, g, a, FUSION_VECTOR_ZERO, deltaTime);
 
             euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
             euler.angle.roll -= rollHome;
@@ -244,7 +256,7 @@ DBGLN("x axis: %d", imu_event.accel[0]);
                 //int x = compass.getX();
                 //int y = compass.getY();
                 //int z = compass.getZ();
-                int x,y,z;
+                /*int x,y,z;
 
                 if(x < calibrationData[0][0]) {
                     calibrationData[0][0] = x;
